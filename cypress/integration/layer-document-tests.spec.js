@@ -186,4 +186,15 @@ context("layer document tests", () => {
 		cy.get('[data-layer-action="delete"]').click();
 		cy.get(".layer-row").should("have.length", 1);
 	});
+
+	it("never interrupts an empty canvas with a recovery dialog", () => {
+		cy.window().then((win) => {
+			const document_model = win.layer_document;
+			document_model.active_layer.canvas.ctx.clearRect(0, 0, document_model.width, document_model.height);
+			document_model.render_composite();
+			win.$(win).triggerHandler("session-update");
+		});
+		cy.wait(150);
+		cy.contains("Recover Document").should("not.exist");
+	});
 });

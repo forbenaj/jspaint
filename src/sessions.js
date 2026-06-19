@@ -1,10 +1,9 @@
 // @ts-check
 // eslint-disable-next-line no-unused-vars
 /* global file_name:writable */
-/* global $app, $canvas_area, localize, magnification, main_canvas, main_ctx, redos, undos */
-import { $DialogWindow } from "./$ToolWindow.js";
+/* global $app, $canvas_area, localize, magnification, main_canvas, main_ctx */
 // import { localize } from "./app-localization.js";
-import { change_url_param, get_uris, load_image_from_uri, open_from_image_info, redo, reset_file, show_error_message, show_resource_load_error_message, undo, undoable, update_title } from "./functions.js";
+import { change_url_param, get_uris, load_image_from_uri, open_from_image_info, reset_file, show_error_message, show_resource_load_error_message, undoable, update_title } from "./functions.js";
 import { $G, debounce, get_help_folder_icon, image_data_match, is_discord_embed, make_canvas, to_canvas_coords } from "./helpers.js";
 import { storage_quota_exceeded } from "./manage-storage.js";
 import { showMessageBox } from "./msgbox.js";
@@ -30,83 +29,10 @@ const match_threshold = 1; // 1 is just enough for a workaround for Brave browse
 const canvas_has_any_apparent_image_data = () =>
 	main_canvas.ctx.getImageData(0, 0, main_canvas.width, main_canvas.height).data.some((v) => v > match_threshold);
 
-let $recovery_window;
-function show_recovery_window(no_longer_blank) {
-	$recovery_window?.close();
-	const $w = $recovery_window = $DialogWindow();
-	$w.on("close", () => {
-		$recovery_window = null;
-	});
-	$w.title("Recover Document");
-	let backup_impossible = false;
-	try { window.localStorage.getItem("bogus test key"); } catch (_error) { backup_impossible = true; }
-	// TODO: get rid of this invasive dialog https://github.com/1j01/jspaint/issues/325
-	// It appears when it shouldn't, in basic scenarios like Ctrl+A in a transparent document,
-	// and it gets bigger once you edit the document, which feels... almost aggressive.
-	// That said, I've made it more compact and delineated the expanded section with a horizontal rule,
-	// so it doesn't feel as much like it's changed out from under you and you have to re-read it.
-	$w.$main.append($(`
-		<p>Woah! The canvas became empty.</p>
-		<p>If this was on purpose, please ignore this message.</p>
-		<p>
-			If the canvas was cleared due to memory usage,<br>
-			click Undo to recover the document.
-		</p>
-		<!--<p>Remember to save with <b>File > Save</b>!</p>-->
-		${backup_impossible ?
-			"<p><b>Note:</b> No automatic backup is possible unless you enable Cookies in your browser.</p>" :
-			(
-				no_longer_blank ?
-					`<hr>
-					<p style="opacity: 0.8; font-size: 0.9em;">
-						Auto-save is paused while this dialog is open.
-					</p>
-					<p style="opacity: 0.8; font-size: 0.9em;">
-						(See <b>File &gt; Manage Storage</b> to view backups.)
-					</p>` :
-					""
-			)
-		}
-	`));
-
-	const $undo = $w.$Button("Undo", () => {
-		undo();
-	});
-	const $redo = $w.$Button("Redo", () => {
-		redo();
-	});
-	const update_buttons_disabled = () => {
-		$undo.prop("disabled", undos.length < 1);
-		$redo.prop("disabled", redos.length < 1);
-	};
-	$G.on("session-update.session-hook", update_buttons_disabled);
-	update_buttons_disabled();
-
-	$w.$Button(localize("Close"), () => {
-		$w.close();
-	});
-	$w.center();
-
-	$w.find("button:enabled").focus();
-}
-
-let last_undos_length = undos.length;
 function handle_data_loss() {
-	const window_is_open = $recovery_window && !$recovery_window.closed;
-	let save_paused = false;
-	if (!canvas_has_any_apparent_image_data()) {
-		if (!window_is_open) {
-			show_recovery_window();
-		}
-		save_paused = true;
-	} else if (window_is_open) {
-		if (undos.length > last_undos_length) {
-			show_recovery_window(true);
-		}
-		save_paused = true;
-	}
-	last_undos_length = undos.length;
-	return save_paused;
+	// Keep the last non-empty backup without interrupting intentional work on a
+	// transparent canvas. Normal undo/redo remains available through the app.
+	return !canvas_has_any_apparent_image_data();
 }
 
 class LocalSession {
