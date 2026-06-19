@@ -1,7 +1,7 @@
 // @ts-check
 // eslint-disable-next-line no-unused-vars
 /* global $thumbnail_window:writable, canvas_bounding_client_rect:writable, current_history_node:writable, file_format:writable, file_name:writable, helper_layer:writable, history_node_to_cancel_to:writable, magnification:writable, monochrome:writable, palette:writable, pointer:writable, return_to_magnification:writable, return_to_tools:writable, root_history_node:writable, saved:writable, selected_colors:writable, selected_tool:writable, selected_tools:writable, selection:writable, show_grid:writable, show_thumbnail:writable, system_file_handle:writable, textbox:writable, thumbnail_canvas:writable, tool_transparent_mode:writable, transparency:writable, undos:writable */
-/* global $canvas, $canvas_area, $colorbox, $status_text, $toolbox, $Window, AccessKeys, applyCSSProperties, decodeBMP, default_canvas_height, default_canvas_width, default_magnification, default_tool, enable_palette_loading_from_indexed_images, encodeBMP, localize, main_canvas, main_ctx, monochrome_palette, my_canvas_height, my_canvas_width, new_local_session, parseThemeFileString, pointer_active, pointers, polychrome_palette, redos, systemHooks, text_tool_font, update_fill_and_stroke_colors_and_lineWidth, UPNG, UTIF */
+/* global $canvas, $canvas_area, $colorbox, $status_text, $toolbox, $Window, AccessKeys, applyCSSProperties, decodeBMP, default_canvas_height, default_canvas_width, default_magnification, default_tool, enable_palette_loading_from_indexed_images, encodeBMP, layer_document, localize, main_canvas, main_ctx, monochrome_palette, my_canvas_height, my_canvas_width, new_local_session, parseThemeFileString, pointer_active, pointers, polychrome_palette, redos, systemHooks, text_tool_font, update_fill_and_stroke_colors_and_lineWidth, UPNG, UTIF */
 
 import { $DialogWindow } from "./$ToolWindow.js";
 import { OnCanvasHelperLayer } from "./OnCanvasHelperLayer.js";
@@ -659,11 +659,11 @@ function reset_canvas_and_history() {
 	});
 	history_node_to_cancel_to = null;
 
-	main_canvas.width = Math.max(1, my_canvas_width);
-	main_canvas.height = Math.max(1, my_canvas_height);
+	layer_document.resize(Math.max(1, my_canvas_width), Math.max(1, my_canvas_height), { preserve: false });
 	main_ctx.disable_image_smoothing();
 	main_ctx.fillStyle = selected_colors.background;
 	main_ctx.fillRect(0, 0, main_canvas.width, main_canvas.height);
+	layer_document.render_composite();
 
 	current_history_node.image_data = main_ctx.getImageData(0, 0, main_canvas.width, main_canvas.height);
 
@@ -970,6 +970,7 @@ function open_from_image_info(info, callback, canceled, into_existing_session, f
 		set_magnification(default_magnification);
 
 		main_ctx.copy(info.image || info.image_data);
+		layer_document.render_composite();
 		apply_file_format_and_palette_info(info);
 		transparency = has_any_transparency(main_ctx);
 		$canvas_area.trigger("resize");
@@ -2034,6 +2035,7 @@ function go_to_history_node(target_history_node, canceling) {
 	update_title();
 
 	main_ctx.copy(target_history_node.image_data);
+	layer_document.render_composite();
 	if (target_history_node.selection_image_data) {
 		if (selection) {
 			selection.destroy();
@@ -2140,6 +2142,7 @@ function undoable({ name, icon, use_loose_canvas_changes, soft, assume_saved }, 
 
 	const before_callback_history_node = current_history_node;
 	callback?.();
+	layer_document.render_composite();
 	if (current_history_node !== before_callback_history_node) {
 		show_error_message(`History node switched during undoable callback for ${name}. This shouldn't happen.`);
 		window.console?.log(`History node switched during undoable callback for ${name}, from`, before_callback_history_node, "to", current_history_node);
@@ -2184,6 +2187,7 @@ function undoable({ name, icon, use_loose_canvas_changes, soft, assume_saved }, 
 function make_or_update_undoable(undoable_meta, undoable_action) {
 	if (current_history_node.futures.length === 0 && undoable_meta.match(current_history_node)) {
 		undoable_action();
+		layer_document.render_composite();
 		current_history_node.image_data = main_ctx.getImageData(0, 0, main_canvas.width, main_canvas.height);
 		current_history_node.selection_image_data = selection && selection.canvas.ctx.getImageData(0, 0, selection.canvas.width, selection.canvas.height);
 		current_history_node.selection_x = selection && selection.x;
@@ -3129,18 +3133,16 @@ function resize_canvas_without_saving_dimensions(unclamped_width, unclamped_heig
 			icon: undoable_meta.icon || get_help_folder_icon("p_stretch_both.png"),
 		}, () => {
 			try {
-				const image_data = main_ctx.getImageData(0, 0, new_width, new_height);
-				main_canvas.width = new_width;
-				main_canvas.height = new_height;
-				main_ctx.disable_image_smoothing();
+				layer_document.resize(new_width, new_height);
 
 				if (!transparency) {
-					main_ctx.fillStyle = selected_colors.background;
-					main_ctx.fillRect(0, 0, main_canvas.width, main_canvas.height);
+					const background_ctx = layer_document.layers[0].canvas.ctx;
+					background_ctx.save();
+					background_ctx.globalCompositeOperation = "destination-over";
+					background_ctx.fillStyle = selected_colors.background;
+					background_ctx.fillRect(0, 0, main_canvas.width, main_canvas.height);
+					background_ctx.restore();
 				}
-
-				const temp_canvas = make_canvas(image_data);
-				main_ctx.drawImage(temp_canvas, 0, 0);
 			} catch (exception) {
 				if (exception.name === "NS_ERROR_FAILURE") {
 					// or localize("There is not enough memory or resources to complete operation.")

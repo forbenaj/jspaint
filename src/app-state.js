@@ -31,10 +31,17 @@ let return_to_magnification = 4;
 /** @type {PixelCanvas} */
 const main_canvas = window.make_canvas();
 main_canvas.classList.add("main-canvas");
-const layer_document = new window.LayerDocument({ initial_canvas: main_canvas });
+const layer_document = new window.LayerDocument({
+	width: main_canvas.width,
+	height: main_canvas.height,
+	composite_canvas: main_canvas,
+});
 window.layer_document = layer_document;
 /** @type {PixelContext} */
-const main_ctx = layer_document.active_layer.canvas.ctx;
+let main_ctx = layer_document.active_layer.canvas.ctx;
+layer_document.on_active_layer_change = (layer) => {
+	main_ctx = layer.canvas.ctx;
+};
 
 /** @type {(string | CanvasPattern)[]} */
 let palette = window.default_palette;

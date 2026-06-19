@@ -21,9 +21,10 @@ class LayerDocument {
 	 * @param {number} [options.width]
 	 * @param {number} [options.height]
 	 * @param {PixelCanvas} [options.initial_canvas]
+	 * @param {PixelCanvas} [options.composite_canvas]
 	 * @param {string} [options.initial_layer_name="Background"]
 	 */
-	constructor({ width, height, initial_canvas, initial_layer_name = "Background" }) {
+	constructor({ width, height, initial_canvas, composite_canvas, initial_layer_name = "Background" }) {
 		if (!initial_canvas && (!Number.isInteger(width) || width < 1 || !Number.isInteger(height) || height < 1)) {
 			throw new TypeError("LayerDocument requires an initial canvas or positive integer dimensions.");
 		}
@@ -32,6 +33,10 @@ class LayerDocument {
 		this.layers = [];
 		/** @type {string} */
 		this.active_layer_id = "";
+		/** @type {PixelCanvas | undefined} */
+		this.composite_canvas = composite_canvas;
+		/** @type {((layer: LayerDocumentLayer) => void) | null} */
+		this.on_active_layer_change = null;
 
 		this.create_layer({
 			name: initial_layer_name,
@@ -50,6 +55,33 @@ class LayerDocument {
 			throw new Error(`Active layer not found: ${this.active_layer_id}`);
 		}
 		return layer;
+	}
+	/**
+	 * Resizes every layer and the composite view.
+	 *
+	 * @param {number} width
+	 * @param {number} height
+	 * @param {object} [options]
+	 * @param {boolean} [options.preserve=true]
+	 */
+	resize(width, height, { preserve = true } = {}) {
+		if (!Number.isInteger(width) || width < 1 || !Number.isInteger(height) || height < 1) {
+			throw new TypeError("Layer dimensions must be positive integers.");
+		}
+		for (const layer of this.layers) {
+			const old_canvas = preserve ? make_canvas(layer.canvas) : null;
+			layer.canvas.width = width;
+			layer.canvas.height = height;
+			layer.canvas.ctx.disable_image_smoothing();
+			if (old_canvas) {
+				layer.canvas.ctx.drawImage(old_canvas, 0, 0);
+			}
+		}
+		if (this.composite_canvas) {
+			this.composite_canvas.width = width;
+			this.composite_canvas.height = height;
+			this.composite_canvas.ctx.disable_image_smoothing();
+		}
 	}
 	/**
 	 * Appends a new topmost layer.
@@ -76,7 +108,20 @@ class LayerDocument {
 			locked: false,
 		};
 		this.layers.push(layer);
+		this.set_active_layer(layer.id);
+		return layer;
+	}
+	/**
+	 * @param {string} layer_id
+	 * @returns {LayerDocumentLayer}
+	 */
+	set_active_layer(layer_id) {
+		const layer = this.layers.find(({ id }) => id === layer_id);
+		if (!layer) {
+			throw new Error(`Layer not found: ${layer_id}`);
+		}
 		this.active_layer_id = layer.id;
+		this.on_active_layer_change?.(layer);
 		return layer;
 	}
 	/**
@@ -85,7 +130,7 @@ class LayerDocument {
 	 * @param {PixelCanvas} [target_canvas]
 	 * @returns {PixelCanvas}
 	 */
-	render_composite(target_canvas = make_canvas(this.width, this.height)) {
+	render_composite(target_canvas = this.composite_canvas ?? make_canvas(this.width, this.height)) {
 		const sole_layer = this.layers.length === 1 ? this.layers[0] : null;
 		if (
 			sole_layer &&

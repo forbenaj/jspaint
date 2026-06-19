@@ -863,14 +863,19 @@ declare class LayerDocument {
 		width?: number,
 		height?: number,
 		initial_canvas?: PixelCanvas,
+		composite_canvas?: PixelCanvas,
 		initial_layer_name?: string,
 	});
 	layers: LayerDocumentLayer[];
 	active_layer_id: string;
+	composite_canvas?: PixelCanvas;
+	on_active_layer_change: ((layer: LayerDocumentLayer) => void) | null;
 	readonly width: number;
 	readonly height: number;
 	readonly active_layer: LayerDocumentLayer;
 	create_layer(options?: { name?: string, canvas?: PixelCanvas }): LayerDocumentLayer;
+	set_active_layer(layer_id: string): LayerDocumentLayer;
+	resize(width: number, height: number, options?: { preserve?: boolean }): void;
 	render_composite(target_canvas?: PixelCanvas): PixelCanvas;
 }
 

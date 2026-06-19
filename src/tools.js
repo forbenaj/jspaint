@@ -1,6 +1,6 @@
 // @ts-check
 /* global selection:writable, stroke_size:writable, textbox:writable */
-/* global $canvas, $canvas_area, $status_size, airbrush_size, brush_shape, brush_size, button, canvas_handles, ctrl, eraser_size, fill_color, pick_color_slot, get_language, localize, magnification, main_canvas, main_ctx, pencil_size, pointer, pointer_active, pointer_over_canvas, pointer_previous, pointer_start, return_to_magnification, selected_colors, shift, stroke_color, transparency */
+/* global $canvas, $canvas_area, $status_size, airbrush_size, brush_shape, brush_size, button, canvas_handles, ctrl, eraser_size, fill_color, pick_color_slot, get_language, layer_document, localize, magnification, main_canvas, main_ctx, pencil_size, pointer, pointer_active, pointer_over_canvas, pointer_previous, pointer_start, return_to_magnification, selected_colors, shift, stroke_color, transparency */
 import { OnCanvasSelection } from "./OnCanvasSelection.js";
 import { OnCanvasTextBox } from "./OnCanvasTextBox.js";
 // import { get_language, localize } from "./app-localization.js";
@@ -209,7 +209,7 @@ const tools = [{
 		const rect_h = inversion_size;
 
 		const ctx_dest = this.preview_canvas.ctx;
-		const id_src = main_ctx.getImageData(rect_x, rect_y, rect_w, rect_h);
+		const id_src = main_canvas.ctx.getImageData(rect_x, rect_y, rect_w, rect_h);
 		const id_dest = ctx_dest.getImageData(rect_x, rect_y, rect_w, rect_h);
 
 		for (let i = 0, l = id_dest.data.length; i < l; i += 4) {
@@ -228,7 +228,7 @@ const tools = [{
 		this.preview_canvas.height = 1;
 
 		const contents_within_polygon = copy_contents_within_polygon(
-			main_canvas,
+			layer_document.active_layer.canvas,
 			this.points,
 			this.x_min,
 			this.y_min,
@@ -298,7 +298,7 @@ const tools = [{
 			if (ctrl) {
 				undoable({ name: "Crop" }, () => {
 					var cropped_canvas = make_canvas(rect_width, rect_height);
-					cropped_canvas.ctx.drawImage(main_canvas, -rect_x, -rect_y);
+					cropped_canvas.ctx.drawImage(layer_document.active_layer.canvas, -rect_x, -rect_y);
 					main_ctx.copy(cropped_canvas);
 					canvas_handles.show();
 					$canvas_area.trigger("resize"); // does this not also call canvas_handles.show()?
@@ -321,7 +321,7 @@ const tools = [{
 					y_max - y_min,
 				);
 				rect_canvas.ctx.drawImage(
-					main_canvas,
+					layer_document.active_layer.canvas,
 					// source:
 					rect_x,
 					rect_y,
@@ -597,9 +597,9 @@ const tools = [{
 			});
 		});
 	},
-	paint(ctx, x, y) {
+	paint(_ctx, x, y) {
 		if (x >= 0 && y >= 0 && x < main_canvas.width && y < main_canvas.height) {
-			const id = ctx.getImageData(~~x, ~~y, 1, 1);
+			const id = main_canvas.ctx.getImageData(~~x, ~~y, 1, 1);
 			const [r, g, b, a] = id.data;
 			this.current_color = `rgba(${r},${g},${b},${a / 255})`;
 		} else {
