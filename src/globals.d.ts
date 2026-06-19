@@ -278,6 +278,9 @@ declare function tool_go(tool: Tool, event_name?: string): void;
 // as well as globals from scripts that are not converted to ESM yet.
 // This supports `window.*` property access.
 interface Window {
+	// layers.js
+	LayerDocument: typeof LayerDocument;
+	layer_document: LayerDocument;
 	// helpers.js
 	$G: JQuery<Window>;
 	make_canvas: {
@@ -843,6 +846,32 @@ interface PixelContext extends CanvasRenderingContext2D {
 	enable_image_smoothing(): void;
 	copy(image: HTMLImageElement | HTMLCanvasElement | ImageData): void;
 	canvas: PixelCanvas;
+}
+
+interface LayerDocumentLayer {
+	id: string;
+	name: string;
+	canvas: PixelCanvas;
+	visible: boolean;
+	opacity: number;
+	blend_mode: GlobalCompositeOperation;
+	locked: boolean;
+}
+
+declare class LayerDocument {
+	constructor(options: {
+		width?: number,
+		height?: number,
+		initial_canvas?: PixelCanvas,
+		initial_layer_name?: string,
+	});
+	layers: LayerDocumentLayer[];
+	active_layer_id: string;
+	readonly width: number;
+	readonly height: number;
+	readonly active_layer: LayerDocumentLayer;
+	create_layer(options?: { name?: string, canvas?: PixelCanvas }): LayerDocumentLayer;
+	render_composite(target_canvas?: PixelCanvas): PixelCanvas;
 }
 
 type BrushShape = "circle" | "square" | "reverse_diagonal" | "diagonal";
