@@ -42,6 +42,9 @@ let main_ctx = layer_document.active_layer.canvas.ctx;
 layer_document.on_active_layer_change = (layer) => {
 	main_ctx = layer.canvas.ctx;
 };
+layer_document.on_change = () => {
+	window.$G.triggerHandler("layers-change");
+};
 
 /** @type {(string | CanvasPattern)[]} */
 let palette = window.default_palette;

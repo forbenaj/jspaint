@@ -190,12 +190,13 @@ declare function make_monochrome_palette(rgba1?: number[], rgba2?: number[]): (s
  * @param {HTMLImageElement |HTMLCanvasElement | null=} options.icon - a visual representation of the operation type, shown in the history window, e.g. get_help_folder_icon("p_blank.png")
  * @returns {HistoryNode}
  */
-declare function make_history_node({ parent, futures, timestamp, soft, image_data, selection_image_data, selection_x, selection_y, textbox_text, textbox_x, textbox_y, textbox_width, textbox_height, text_tool_font, tool_transparent_mode, foreground_color, background_color, ternary_color, name, icon, }: {
+declare function make_history_node({ parent, futures, timestamp, soft, image_data, layer_document_state, selection_image_data, selection_x, selection_y, textbox_text, textbox_x, textbox_y, textbox_width, textbox_height, text_tool_font, tool_transparent_mode, foreground_color, background_color, ternary_color, name, icon, }: {
 	parent?: (HistoryNode | null) | undefined;
 	futures?: HistoryNode[] | undefined;
 	timestamp?: number | undefined;
 	soft?: boolean | undefined;
 	image_data?: (ImageData | null) | undefined;
+	layer_document_state?: (LayerDocumentSnapshot | null) | undefined;
 	selection_image_data?: (ImageData | null) | undefined;
 	selection_x?: number | undefined;
 	selection_y?: number | undefined;
@@ -317,12 +318,13 @@ interface Window {
 	 * @param {HTMLImageElement |HTMLCanvasElement | null=} options.icon - a visual representation of the operation type, shown in the history window, e.g. get_help_folder_icon("p_blank.png")
 	 * @returns {HistoryNode}
 	 */
-	make_history_node({ parent, futures, timestamp, soft, image_data, selection_image_data, selection_x, selection_y, textbox_text, textbox_x, textbox_y, textbox_width, textbox_height, text_tool_font, tool_transparent_mode, foreground_color, background_color, ternary_color, name, icon, }: {
+	make_history_node({ parent, futures, timestamp, soft, image_data, layer_document_state, selection_image_data, selection_x, selection_y, textbox_text, textbox_x, textbox_y, textbox_width, textbox_height, text_tool_font, tool_transparent_mode, foreground_color, background_color, ternary_color, name, icon, }: {
 		parent?: (HistoryNode | null) | undefined;
 		futures?: HistoryNode[] | undefined;
 		timestamp?: number | undefined;
 		soft?: boolean | undefined;
 		image_data?: (ImageData | null) | undefined;
+		layer_document_state?: (LayerDocumentSnapshot | null) | undefined;
 		selection_image_data?: (ImageData | null) | undefined;
 		selection_x?: number | undefined;
 		selection_y?: number | undefined;
@@ -437,6 +439,9 @@ interface Window {
 			ternary: string | CanvasPattern,
 		};
 		set_theme: (theme_file_name: string) => void;
+		undo: () => boolean;
+		redo: () => boolean;
+		undoable: (options: ActionMetadata, callback: () => void) => void;
 		$: JQueryStatic;
 	};
 
@@ -790,6 +795,8 @@ interface HistoryNode {
 	soft: boolean;
 	/** the image data for the canvas (TODO: region updates) */
 	image_data: ImageData | null;
+	/** layers and active layer for this state */
+	layer_document_state: LayerDocumentSnapshot | null;
 	/** the image data for the selection, if any */
 	selection_image_data: ImageData | null;
 	/** the x position of the selection, if any */
@@ -858,6 +865,21 @@ interface LayerDocumentLayer {
 	locked: boolean;
 }
 
+interface LayerDocumentLayerSnapshot {
+	id: string;
+	name: string;
+	visible: boolean;
+	opacity: number;
+	blend_mode: GlobalCompositeOperation;
+	locked: boolean;
+	image_data: ImageData;
+}
+
+interface LayerDocumentSnapshot {
+	active_layer_id: string;
+	layers: LayerDocumentLayerSnapshot[];
+}
+
 declare class LayerDocument {
 	constructor(options: {
 		width?: number,
@@ -870,11 +892,20 @@ declare class LayerDocument {
 	active_layer_id: string;
 	composite_canvas?: PixelCanvas;
 	on_active_layer_change: ((layer: LayerDocumentLayer) => void) | null;
+	on_change: (() => void) | null;
 	readonly width: number;
 	readonly height: number;
 	readonly active_layer: LayerDocumentLayer;
 	create_layer(options?: { name?: string, canvas?: PixelCanvas }): LayerDocumentLayer;
+	duplicate_layer(layer_id: string): LayerDocumentLayer;
+	get_layer(layer_id: string): LayerDocumentLayer;
 	set_active_layer(layer_id: string): LayerDocumentLayer;
+	update_layer(layer_id: string, updates: Partial<Pick<LayerDocumentLayer, "name" | "visible" | "opacity" | "blend_mode" | "locked">>): LayerDocumentLayer;
+	move_layer(layer_id: string, new_index: number): void;
+	remove_layer(layer_id: string): LayerDocumentLayer;
+	reset(width: number, height: number, name?: string): void;
+	create_snapshot(previous_snapshot?: LayerDocumentSnapshot | null): LayerDocumentSnapshot;
+	restore_snapshot(snapshot: LayerDocumentSnapshot): void;
 	resize(width: number, height: number, options?: { preserve?: boolean }): void;
 	render_composite(target_canvas?: PixelCanvas): PixelCanvas;
 }

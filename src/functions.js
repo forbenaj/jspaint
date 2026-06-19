@@ -659,13 +659,14 @@ function reset_canvas_and_history() {
 	});
 	history_node_to_cancel_to = null;
 
-	layer_document.resize(Math.max(1, my_canvas_width), Math.max(1, my_canvas_height), { preserve: false });
+	layer_document.reset(Math.max(1, my_canvas_width), Math.max(1, my_canvas_height));
 	main_ctx.disable_image_smoothing();
 	main_ctx.fillStyle = selected_colors.background;
 	main_ctx.fillRect(0, 0, main_canvas.width, main_canvas.height);
 	layer_document.render_composite();
 
-	current_history_node.image_data = main_ctx.getImageData(0, 0, main_canvas.width, main_canvas.height);
+	current_history_node.image_data = main_canvas.ctx.getImageData(0, 0, main_canvas.width, main_canvas.height);
+	current_history_node.layer_document_state = layer_document.create_snapshot();
 
 	$canvas_area.trigger("resize");
 	$G.triggerHandler("history-update"); // update history view
@@ -679,6 +680,7 @@ function reset_canvas_and_history() {
  * @param {number=} options.timestamp - when this state was created
  * @param {boolean=} options.soft - indicates that undo should skip this state; it can still be accessed with the History window
  * @param {ImageData | null=} options.image_data - the image data for the canvas (TODO: region updates)
+ * @param {LayerDocumentSnapshot | null=} options.layer_document_state - the layers and active layer for this state
  * @param {ImageData | null=} options.selection_image_data - the image data for the selection, if any
  * @param {number=} options.selection_x - the x position of the selection, if any
  * @param {number=} options.selection_y - the y position of the selection, if any
@@ -702,6 +704,7 @@ function make_history_node({
 	timestamp = Date.now(), // when this state was created
 	soft = false, // indicates that undo should skip this state; it can still be accessed with the History window
 	image_data = null, // the image data for the canvas (TODO: region updates)
+	layer_document_state = null, // the layers and active layer for this state
 	selection_image_data = null, // the image data for the selection, if any
 	selection_x, // the x position of the selection, if any
 	selection_y, // the y position of the selection, if any
@@ -724,6 +727,7 @@ function make_history_node({
 		timestamp,
 		soft,
 		image_data,
+		layer_document_state,
 		selection_image_data,
 		selection_x,
 		selection_y,
@@ -976,7 +980,8 @@ function open_from_image_info(info, callback, canceled, into_existing_session, f
 		$canvas_area.trigger("resize");
 
 		current_history_node.name = localize("Open");
-		current_history_node.image_data = main_ctx.getImageData(0, 0, main_canvas.width, main_canvas.height);
+		current_history_node.image_data = main_canvas.ctx.getImageData(0, 0, main_canvas.width, main_canvas.height);
+		current_history_node.layer_document_state = layer_document.create_snapshot();
 		current_history_node.icon = get_help_folder_icon("p_open.png");
 
 		if (canvas_modified_while_loading || !from_session_load) {
@@ -2011,7 +2016,7 @@ function render_history_as_gif() {
 function go_to_history_node(target_history_node, canceling) {
 	const from_history_node = current_history_node;
 
-	if (!target_history_node.image_data) {
+	if (!target_history_node.image_data && !target_history_node.layer_document_state) {
 		if (!canceling) {
 			show_error_message("History entry has no image data.");
 			window.console?.log("Target history entry has no image data:", target_history_node);
@@ -2034,7 +2039,11 @@ function go_to_history_node(target_history_node, canceling) {
 	saved = false;
 	update_title();
 
-	main_ctx.copy(target_history_node.image_data);
+	if (target_history_node.layer_document_state) {
+		layer_document.restore_snapshot(target_history_node.layer_document_state);
+	} else {
+		main_ctx.copy(target_history_node.image_data);
+	}
 	layer_document.render_composite();
 	if (target_history_node.selection_image_data) {
 		if (selection) {
@@ -2148,13 +2157,15 @@ function undoable({ name, icon, use_loose_canvas_changes, soft, assume_saved }, 
 		window.console?.log(`History node switched during undoable callback for ${name}, from`, before_callback_history_node, "to", current_history_node);
 	}
 
-	const image_data = main_ctx.getImageData(0, 0, main_canvas.width, main_canvas.height);
+	const image_data = main_canvas.ctx.getImageData(0, 0, main_canvas.width, main_canvas.height);
+	const layer_document_state = layer_document.create_snapshot(current_history_node.layer_document_state);
 
 	redos.length = 0;
 	undos.push(current_history_node);
 
 	const new_history_node = make_history_node({
 		image_data,
+		layer_document_state,
 		selection_image_data: selection && selection.canvas.ctx.getImageData(0, 0, selection.canvas.width, selection.canvas.height),
 		selection_x: selection && selection.x,
 		selection_y: selection && selection.y,
@@ -2188,7 +2199,8 @@ function make_or_update_undoable(undoable_meta, undoable_action) {
 	if (current_history_node.futures.length === 0 && undoable_meta.match(current_history_node)) {
 		undoable_action();
 		layer_document.render_composite();
-		current_history_node.image_data = main_ctx.getImageData(0, 0, main_canvas.width, main_canvas.height);
+		current_history_node.image_data = main_canvas.ctx.getImageData(0, 0, main_canvas.width, main_canvas.height);
+		current_history_node.layer_document_state = layer_document.create_snapshot(current_history_node.layer_document_state);
 		current_history_node.selection_image_data = selection && selection.canvas.ctx.getImageData(0, 0, selection.canvas.width, selection.canvas.height);
 		current_history_node.selection_x = selection && selection.x;
 		current_history_node.selection_y = selection && selection.y;

@@ -151,4 +151,24 @@ context("layer document tests", () => {
 			expect(selected_pixel).to.deep.equal([255, 0, 0, 255]);
 		});
 	});
+
+	it("restores layer structure and pixels through undo and redo", () => {
+		cy.window().then((win) => {
+			const document_model = win.layer_document;
+			win.api_for_cypress_tests.undoable({ name: "Add Layer" }, () => {
+				const layer = document_model.create_layer({ name: "Overlay" });
+				layer.canvas.ctx.fillStyle = "blue";
+				layer.canvas.ctx.fillRect(0, 0, 1, 1);
+			});
+
+			expect(document_model.layers).to.have.length(2);
+			expect(document_model.active_layer.name).to.equal("Overlay");
+			expect(win.api_for_cypress_tests.undo()).to.equal(true);
+			expect(document_model.layers).to.have.length(1);
+			expect(win.api_for_cypress_tests.redo()).to.equal(true);
+			expect(document_model.layers).to.have.length(2);
+			expect(document_model.active_layer.name).to.equal("Overlay");
+			expect([...document_model.active_layer.canvas.ctx.getImageData(0, 0, 1, 1).data]).to.deep.equal([0, 0, 255, 255]);
+		});
+	});
 });
