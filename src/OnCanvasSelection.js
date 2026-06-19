@@ -1,5 +1,5 @@
 // @ts-check
-/* global $canvas_area, $status_position, $status_size, main_canvas, main_ctx, selected_colors, tool_transparent_mode, transparency */
+/* global $canvas_area, $status_position, $status_size, layer_document, main_canvas, main_ctx, selected_colors, tool_transparent_mode, transparency */
 import { Handles } from "./Handles.js";
 import { OnCanvasObject } from "./OnCanvasObject.js";
 import { get_tool_by_id, make_or_update_undoable, undoable, update_helper_layer } from "./functions.js";
@@ -68,7 +68,7 @@ class OnCanvasSelection extends OnCanvasObject {
 				this.canvas = make_canvas(this.source_canvas);
 			} else {
 				this.source_canvas = make_canvas(this.width, this.height);
-				this.source_canvas.ctx.drawImage(main_canvas, this.x, this.y, this.width, this.height, 0, 0, this.width, this.height);
+				this.source_canvas.ctx.drawImage(layer_document.active_layer.canvas, this.x, this.y, this.width, this.height, 0, 0, this.width, this.height);
 				this.canvas = make_canvas(this.source_canvas);
 				this.cut_out_background();
 			}
@@ -212,6 +212,7 @@ class OnCanvasSelection extends OnCanvasObject {
 		if (!transparency || tool_transparent_mode) {
 			main_ctx.drawImage(colored_cutout, this.x, this.y);
 		}
+		layer_document.render_composite();
 
 		$G.triggerHandler("session-update"); // autosave
 		update_helper_layer();

@@ -1,7 +1,7 @@
 // @ts-check
 // eslint-disable-next-line no-unused-vars
 /* global saved:writable, brush_size:writable, pencil_size:writable, stroke_size:writable */
-/* global $canvas_area, aliasing, localize, main_canvas, main_ctx, palette, selected_colors, selection, stroke_color, transparency */
+/* global $canvas_area, aliasing, layer_document, localize, main_canvas, main_ctx, palette, selected_colors, selection, stroke_color, transparency */
 // import { localize } from "./app-localization.js";
 import { cancel, deselect, detect_monochrome, show_error_message, undoable, update_title } from "./functions.js";
 import { $G, TAU, get_help_folder_icon, get_rgba_from_color, make_canvas, memoize_synchronous_function } from "./helpers.js";
@@ -940,7 +940,7 @@ function draw_noncontiguous_fill_separately(source_ctx, dest_ctx, x, y) {
  * @param {(original_canvas: PixelCanvas, original_ctx: PixelContext, new_canvas: PixelCanvas, new_ctx: PixelContext) => void} fn - The image transformation function to apply.
  */
 function apply_image_transformation(meta, fn) {
-	const original_canvas = selection ? selection.source_canvas : main_canvas;
+	const original_canvas = selection ? selection.source_canvas : main_ctx.canvas;
 
 	const new_canvas = make_canvas(original_canvas.width, original_canvas.height);
 
@@ -967,6 +967,9 @@ function apply_image_transformation(meta, fn) {
 			saved = false;
 			update_title();
 
+			if (new_canvas.width !== main_canvas.width || new_canvas.height !== main_canvas.height) {
+				layer_document.resize(new_canvas.width, new_canvas.height);
+			}
 			main_ctx.copy(new_canvas);
 
 			// $canvas.trigger("update"); // update handles
