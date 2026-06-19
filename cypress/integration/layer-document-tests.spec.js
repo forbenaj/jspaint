@@ -171,4 +171,19 @@ context("layer document tests", () => {
 			expect([...document_model.active_layer.canvas.ctx.getImageData(0, 0, 1, 1).data]).to.deep.equal([0, 0, 255, 255]);
 		});
 	});
+
+	it("shows the docked layers box and manages layers", () => {
+		cy.get(".layers-component").should("be.visible");
+		cy.get(".layers-component").parent().should("have.class", "right");
+		cy.get(".layer-row").should("have.length", 1);
+		cy.get('[data-layer-action="new"]').click();
+		cy.get(".layer-row").should("have.length", 2);
+		cy.get(".layer-row.selected .layer-name").should("have.value", "Layer 2");
+		cy.get(".layer-row.selected .layer-visibility-toggle").click();
+		cy.window().then((win) => {
+			expect(win.layer_document.active_layer.visible).to.equal(false);
+		});
+		cy.get('[data-layer-action="delete"]').click();
+		cy.get(".layer-row").should("have.length", 1);
+	});
 });

@@ -381,6 +381,83 @@ whereas it breaks component docking calculations if used to shift the colors box
 .colors-component.tall {
 	width: 47px;
 }
+.layers-component {
+	box-sizing: border-box;
+	width: 190px;
+	height: 280px;
+	padding: 4px;
+}
+.layers-box {
+	display: flex;
+	flex: 1;
+	min-height: 0;
+	flex-direction: column;
+	gap: 4px;
+}
+.layers-list {
+	display: flex;
+	flex: 1;
+	min-height: 0;
+	flex-direction: column;
+	overflow-y: auto;
+	background: var(--Window);
+	color: var(--WindowText);
+	box-shadow: var(--inset-deep);
+}
+.layer-row {
+	display: flex;
+	flex: 0 0 auto;
+	align-items: center;
+	gap: 4px;
+	padding: 3px;
+	cursor: default;
+}
+.layer-row.selected {
+	background: var(--Hilight);
+	color: var(--HilightText);
+}
+.layer-visibility-toggle {
+	flex: 0 0 auto;
+	width: var(--checkbox-width);
+	height: var(--checkbox-width);
+	margin-left: 0 !important;
+}
+.layer-row input[type="checkbox"] + .layer-visibility-toggle::before {
+	top: 0;
+	left: 0;
+}
+.layer-row input[type="checkbox"]:checked + .layer-visibility-toggle::after {
+	left: var(--checkmark-left);
+}
+.layer-thumbnail {
+	display: block;
+	flex: 0 0 auto;
+	width: 40px;
+	height: 30px;
+	background-color: white;
+	background-image:
+		linear-gradient(45deg, #ccc 25%, transparent 25%),
+		linear-gradient(-45deg, #ccc 25%, transparent 25%),
+		linear-gradient(45deg, transparent 75%, #ccc 75%),
+		linear-gradient(-45deg, transparent 75%, #ccc 75%);
+	background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+	background-size: 8px 8px;
+	image-rendering: pixelated;
+}
+.layer-name {
+	min-width: 0;
+	width: 100%;
+}
+.layers-controls {
+	display: flex;
+	flex: 0 0 auto;
+	gap: 3px;
+}
+.layers-controls button {
+	min-width: 28px;
+	height: 24px;
+	padding: 0 5px;
+}
 .palette {
 	display: flex;
 }

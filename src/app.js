@@ -4,6 +4,7 @@
 /* global AccessKeys, current_history_node, default_airbrush_size, default_brush_shape, default_brush_size, default_canvas_height, default_canvas_width, default_eraser_size, default_magnification, default_pencil_size, default_stroke_size, enable_fs_access_api, file_name, get_direction, layer_document, localize, magnification, main_canvas, main_ctx, return_to_tools, selected_colors, selected_tool, selected_tools, selection, systemHooks, textbox, transparency */
 
 import { $ColorBox } from "./$ColorBox.js";
+import { $LayersBox } from "./$LayersBox.js";
 import { $ToolBox } from "./$ToolBox.js";
 import { Handles } from "./Handles.js";
 // import { get_direction, localize } from "./app-localization.js";
@@ -781,6 +782,8 @@ window.$toolbox = $toolbox;
 
 let $colorbox = $ColorBox($("body").hasClass("vertical-color-box-mode"));
 window.$colorbox = $colorbox;
+const $layersbox = $LayersBox();
+window.$layersbox = $layersbox;
 
 $G.on("vertical-color-box-mode-toggled", () => {
 	// Destroy and recreate the color box because it uses a constructor parameter
@@ -1746,6 +1749,7 @@ prevent_selection($app);
 prevent_selection($toolbox);
 // prevent_selection($toolbox2);
 prevent_selection($colorbox);
+prevent_selection($layersbox);
 // #endregion
 
 // Stop drawing (or dragging or whatever) if you Alt+Tab or whatever

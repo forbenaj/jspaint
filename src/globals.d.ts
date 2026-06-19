@@ -259,6 +259,7 @@ declare const $bottom: JQuery<HTMLDivElement>;
 declare const $canvas_area: JQuery<HTMLDivElement>;
 declare const $canvas: JQuery<HTMLCanvasElement>;
 declare const $colorbox: JQuery<HTMLDivElement> & I$Component & I$ColorBox;
+declare const $layersbox: JQuery<HTMLDivElement> & I$Component;
 declare const $status_area: JQuery<HTMLDivElement>;
 declare const $status_position: JQuery<HTMLDivElement>;
 declare const $status_size: JQuery<HTMLDivElement>;
@@ -383,6 +384,7 @@ interface Window {
 	$canvas_area: JQuery<HTMLDivElement>;
 	$canvas: JQuery<HTMLCanvasElement>;
 	$colorbox: JQuery<HTMLDivElement> & I$Component & I$ColorBox;
+	$layersbox: JQuery<HTMLDivElement> & I$Component;
 	$status_area: JQuery<HTMLDivElement>;
 	$status_position: JQuery<HTMLDivElement>;
 	$status_size: JQuery<HTMLDivElement>;

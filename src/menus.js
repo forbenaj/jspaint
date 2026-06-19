@@ -1,6 +1,6 @@
 // @ts-check
 /* global tool_transparent_mode:writable, palette:writable, show_font_box:writable */
-/* global $canvas_area, $colorbox, $status_area, $toolbox, available_languages, get_iso_language_name, get_language, get_language_emoji, get_language_endonym, localize, magnification, main_canvas, menu_bar, MENU_DIVIDER, redos, selection, set_language, show_grid, show_thumbnail, systemHooks, textbox, undos */
+/* global $canvas_area, $colorbox, $layersbox, $status_area, $toolbox, available_languages, get_iso_language_name, get_language, get_language_emoji, get_language_endonym, localize, magnification, main_canvas, menu_bar, MENU_DIVIDER, redos, selection, set_language, show_grid, show_thumbnail, systemHooks, textbox, undos */
 // import { available_languages, get_iso_language_name, get_language, get_language_emoji, get_language_endonym, localize, set_language } from "./app-localization.js";
 import { OnCanvasTextBox } from "./OnCanvasTextBox.js";
 import { show_edit_colors_window } from "./edit-colors.js";
@@ -418,6 +418,19 @@ const menus = {
 				check: () => $colorbox.is(":visible"),
 			},
 			description: localize("Shows or hides the color box."),
+		},
+		{
+			label: localize("&Layers"),
+			speech_recognition: [
+				"toggle layers", "toggle layers box", "toggle layers panel",
+			],
+			checkbox: {
+				toggle: () => {
+					$layersbox.toggle();
+				},
+				check: () => $layersbox.is(":visible"),
+			},
+			description: localize("Shows or hides the layers box."),
 		},
 		{
 			label: localize("&Status Bar"),
