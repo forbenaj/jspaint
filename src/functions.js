@@ -188,6 +188,9 @@ function update_helper_layer(e) {
 		update_helper_layer_immediately();
 	});
 }
+$G.on("layers-change", () => {
+	update_helper_layer();
+});
 function update_helper_layer_immediately() {
 	// window.console?.log("Update helper layer NOW");
 	if (info_for_updating_pointer) {

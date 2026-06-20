@@ -45,7 +45,8 @@ body,
 .canvas-area {
 	background: var(--AppWorkspace);
 }
-.canvas-area > canvas {
+.canvas-area > canvas,
+.helper-layer > canvas {
 	background: var(--checker);
 	/* 16px is a common grid size, but that gives 8px grid cells, and our max zoom is 8x */
 	/*background-size: 16px;*/
