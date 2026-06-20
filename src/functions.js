@@ -15,7 +15,7 @@ import { apply_image_transformation, draw_grid, draw_selection_box, flip_horizon
 import { show_imgur_uploader } from "./imgur.js";
 import { showMessageBox } from "./msgbox.js";
 import { localStore } from "./storage.js";
-import { TOOL_CURVE, TOOL_FREE_FORM_SELECT, TOOL_POLYGON, TOOL_SELECT, TOOL_TEXT, tools } from "./tools.js";
+import { TOOL_CURVE, TOOL_ERASER, TOOL_FREE_FORM_SELECT, TOOL_POLYGON, TOOL_SELECT, TOOL_TEXT, tools } from "./tools.js";
 // `sessions.js` must be loaded after `app.js`
 // This would cause it to be loaded earlier, and error trying to access `undos`
 // I'm surprised I haven't been bitten by this sort of bug, and I've
@@ -160,6 +160,8 @@ function update_canvas_rect() {
 }
 
 let helper_layer_update_queued = false;
+const active_layer_preview_canvas = make_canvas();
+const layer_preview_composite_canvas = make_canvas();
 /**
  * for updating the brush preview when the mouse stays in the same place,
  * but its coordinates in the document change due to scrolling or browser zooming (handled with scroll and resize events)
@@ -326,9 +328,67 @@ function render_canvas_view(hcanvas, scale, viewport_x, viewport_y, is_helper_la
 	if (select_box_index >= 0) {
 		tools_to_preview = tools_to_preview.filter((tool, index) => !tool.selectBox || index == select_box_index);
 	}
+	const preview_belongs_to_active_layer = (tool) =>
+		tool.shape || tool.paint_mask || tool.get_brush || tool.id === TOOL_CURVE || tool.id === TOOL_ERASER;
+	const active_layer_preview_tools = is_helper_layer ? tools_to_preview.filter(preview_belongs_to_active_layer) : [];
+	const compositing_layer_preview = active_layer_preview_tools.length > 0;
+
+	if (is_helper_layer) {
+		$canvas.css("opacity", compositing_layer_preview ? 0 : "");
+	}
+	if (compositing_layer_preview) {
+		active_layer_preview_canvas.ctx.copy(layer_document.active_layer.canvas);
+		for (const tool of active_layer_preview_tools) {
+			if (tool.drawPreviewUnderGrid && pointer && pointers.length < 2) {
+				active_layer_preview_canvas.ctx.save();
+				tool.drawPreviewUnderGrid(active_layer_preview_canvas.ctx, pointer.x, pointer.y, false, 1, 0, 0);
+				active_layer_preview_canvas.ctx.restore();
+			}
+		}
+
+		if (layer_preview_composite_canvas.width !== layer_document.width) {
+			layer_preview_composite_canvas.width = layer_document.width;
+		}
+		if (layer_preview_composite_canvas.height !== layer_document.height) {
+			layer_preview_composite_canvas.height = layer_document.height;
+		}
+		const composite_ctx = layer_preview_composite_canvas.ctx;
+		composite_ctx.disable_image_smoothing();
+		composite_ctx.clearRect(0, 0, layer_preview_composite_canvas.width, layer_preview_composite_canvas.height);
+		for (const layer of layer_document.layers) {
+			if (!layer.visible || layer.opacity <= 0) {
+				continue;
+			}
+			composite_ctx.save();
+			composite_ctx.globalAlpha = Math.min(1, layer.opacity);
+			composite_ctx.globalCompositeOperation = layer.blend_mode;
+			composite_ctx.drawImage(
+				layer.id === layer_document.active_layer_id ? active_layer_preview_canvas : layer.canvas,
+				0,
+				0
+			);
+			composite_ctx.restore();
+		}
+		hctx.drawImage(
+			layer_preview_composite_canvas,
+			viewport_x,
+			viewport_y,
+			hcanvas.width / scale,
+			hcanvas.height / scale,
+			0,
+			0,
+			hcanvas.width,
+			hcanvas.height
+		);
+	}
 
 	tools_to_preview.forEach((tool) => {
-		if (tool.drawPreviewUnderGrid && pointer && pointers.length < 2) {
+		if (
+			tool.drawPreviewUnderGrid &&
+			pointer &&
+			pointers.length < 2 &&
+			(!compositing_layer_preview || !preview_belongs_to_active_layer(tool))
+		) {
 			hctx.save();
 			tool.drawPreviewUnderGrid(hctx, pointer.x, pointer.y, grid_visible, scale, -viewport_x, -viewport_y);
 			hctx.restore();
